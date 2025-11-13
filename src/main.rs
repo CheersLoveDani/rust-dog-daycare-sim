@@ -24,6 +24,8 @@ enum Breed {
     GermanShepherd,
     Cat,
     Fursuit,
+    Dachshund,
+    Greyhound,
 }
 
 impl Breed {
@@ -39,6 +41,8 @@ impl Breed {
             Breed::GermanShepherd => "German Shepherd",
             Breed::Cat => "Cat (snuck in!)",
             Breed::Fursuit => "Totally Real Dog",
+            Breed::Dachshund => "Dachshund",
+            Breed::Greyhound => "Greyhound",
         }
     }
 
@@ -54,6 +58,8 @@ impl Breed {
             Breed::GermanShepherd => Color::from_rgba(101, 67, 33, 255),
             Breed::Cat => Color::from_rgba(255, 140, 60, 255), // Orange tabby
             Breed::Fursuit => Color::from_rgba(100, 150, 255, 255), // Blue fursuit
+            Breed::Dachshund => Color::from_rgba(140, 70, 20, 255), // Brown sausage dog
+            Breed::Greyhound => Color::from_rgba(180, 180, 180, 255), // Grey
         }
     }
 
@@ -69,6 +75,8 @@ impl Breed {
             Breed::GermanShepherd => Color::from_rgba(50, 40, 20, 255),
             Breed::Cat => Color::from_rgba(255, 220, 180, 255), // Light orange stripes
             Breed::Fursuit => Color::from_rgba(255, 200, 160, 255), // Skin tone showing through
+            Breed::Dachshund => Color::from_rgba(100, 50, 10, 255), // Dark brown
+            Breed::Greyhound => Color::from_rgba(220, 220, 220, 255), // Light grey
         }
     }
 
@@ -84,6 +92,8 @@ impl Breed {
             Breed::GermanShepherd => 1.1,
             Breed::Cat => 0.75,
             Breed::Fursuit => 1.15, // Human-sized
+            Breed::Dachshund => 0.7, // Low to ground
+            Breed::Greyhound => 1.2, // Tall and slim
         }
     }
 }
@@ -284,6 +294,20 @@ impl Dog {
 
     fn draw(&self, time: f32) {
         let scale = self.breed.size_scale();
+
+        // Calculate visual scaling based on stats
+        // Fullness (low hunger = more full = fatter/longer)
+        let fullness = 1.0 - (self.hunger as f32 / 100.0);
+        let fat_scale = 1.0 + fullness * 0.4; // Up to 40% fatter when full
+        let length_scale = 1.0 + fullness * 0.6; // Up to 60% longer for sausage dog
+
+        // Greyhound gets taller the more energy it has
+        let height_scale = if self.breed == Breed::Greyhound {
+            1.0 + (self.energy as f32 / 100.0) * 0.3 // Up to 30% taller
+        } else {
+            1.0
+        };
+
         let bounce = match self.current_action {
             DogAction::Playing => (time * 8.0 + self.animation_offset).sin() * 8.0,
             DogAction::Eating => (time * 4.0).sin() * 1.5,
@@ -292,20 +316,32 @@ impl Dog {
         };
         let y_pos = self.y + bounce;
 
-        // Shadow
+        // Shadow (scales with fatness/length)
+        let shadow_scale = if self.breed == Breed::Dachshund {
+            length_scale
+        } else {
+            fat_scale
+        };
         draw_ellipse(
             self.x,
             self.y + 45.0 * scale,
-            35.0 * scale,
+            35.0 * scale * shadow_scale,
             15.0 * scale,
             0.0,
             Color::from_rgba(0, 0, 0, 50),
         );
 
         match self.breed {
-            Breed::Cat => self.draw_cat(y_pos, scale, time),
-            Breed::Fursuit => self.draw_fursuit(y_pos, scale, time),
-            _ => self.draw_dog(y_pos, scale, time),
+            Breed::Cat => self.draw_cat(y_pos, scale, time, fat_scale),
+            Breed::Fursuit => self.draw_fursuit(y_pos, scale, time, fat_scale),
+            Breed::Dachshund => self.draw_dachshund(y_pos, scale, time, length_scale),
+            Breed::Greyhound => self.draw_greyhound(y_pos, scale, time, height_scale),
+            _ => self.draw_dog(y_pos, scale, time, fat_scale),
+        }
+
+        // Draw dirt when cleanliness is low
+        if self.cleanliness < 60 {
+            self.draw_dirt(y_pos, scale, time);
         }
 
         // Speech bubble
@@ -366,22 +402,32 @@ impl Dog {
         draw_text(&self.name, self.x - name_width / 2.0, y_pos - 21.0, 18.0, TEXT_DARK);
     }
 
-    fn draw_dog(&self, y_pos: f32, scale: f32, time: f32) {
+    fn draw_dog(&self, y_pos: f32, scale: f32, time: f32, fat_scale: f32) {
         let body_size = 25.0 * scale;
-        draw_circle(self.x, y_pos + 20.0 * scale, body_size, self.breed.color());
+        // Apply fat scaling to body
+        draw_ellipse(
+            self.x,
+            y_pos + 20.0 * scale,
+            body_size * fat_scale,
+            body_size,
+            0.0,
+            self.breed.color()
+        );
 
         match self.breed {
             Breed::Beagle | Breed::Husky | Breed::Corgi => {
-                draw_circle(
+                draw_ellipse(
                     self.x,
                     y_pos + 25.0 * scale,
+                    body_size * 0.7 * fat_scale,
                     body_size * 0.7,
+                    0.0,
                     self.breed.secondary_color(),
                 );
             }
             Breed::Poodle => {
-                draw_circle(self.x - 15.0 * scale, y_pos + 20.0 * scale, 10.0 * scale, self.breed.color());
-                draw_circle(self.x + 15.0 * scale, y_pos + 20.0 * scale, 10.0 * scale, self.breed.color());
+                draw_circle(self.x - 15.0 * scale * fat_scale, y_pos + 20.0 * scale, 10.0 * scale, self.breed.color());
+                draw_circle(self.x + 15.0 * scale * fat_scale, y_pos + 20.0 * scale, 10.0 * scale, self.breed.color());
             }
             _ => {}
         }
@@ -517,17 +563,17 @@ impl Dog {
         self.draw_action_effects(y_pos, time);
     }
 
-    fn draw_cat(&self, y_pos: f32, scale: f32, time: f32) {
-        // Sleeker cat body
-        draw_ellipse(self.x, y_pos + 18.0 * scale, 22.0 * scale, 18.0 * scale, 0.0, self.breed.color());
+    fn draw_cat(&self, y_pos: f32, scale: f32, time: f32, fat_scale: f32) {
+        // Sleeker cat body (gets fatter when full)
+        draw_ellipse(self.x, y_pos + 18.0 * scale, 22.0 * scale * fat_scale, 18.0 * scale, 0.0, self.breed.color());
 
-        // Stripes
+        // Stripes (scale with fatness)
         for i in 0..3 {
             let stripe_y = y_pos + 15.0 * scale + i as f32 * 6.0 * scale;
             draw_line(
-                self.x - 15.0 * scale,
+                self.x - 15.0 * scale * fat_scale,
                 stripe_y,
-                self.x + 15.0 * scale,
+                self.x + 15.0 * scale * fat_scale,
                 stripe_y,
                 2.0 * scale,
                 self.breed.secondary_color(),
@@ -582,9 +628,9 @@ impl Dog {
         self.draw_action_effects(y_pos, time);
     }
 
-    fn draw_fursuit(&self, y_pos: f32, scale: f32, time: f32) {
-        // Body (fursuit)
-        draw_circle(self.x, y_pos + 18.0 * scale, 28.0 * scale, self.breed.color());
+    fn draw_fursuit(&self, y_pos: f32, scale: f32, time: f32, fat_scale: f32) {
+        // Body (fursuit) - person inside gets wider when full!
+        draw_ellipse(self.x, y_pos + 18.0 * scale, 28.0 * scale * fat_scale, 28.0 * scale, 0.0, self.breed.color());
 
         // Head (costume head)
         draw_circle(self.x, y_pos - 2.0 * scale, 22.0 * scale, self.breed.color());
@@ -695,6 +741,165 @@ impl Dog {
         draw_circle(tail_x + 6.0 * scale, y_pos + 14.0 * scale, 6.0 * scale, self.breed.color());
 
         self.draw_action_effects(y_pos, time);
+    }
+
+    fn draw_dachshund(&self, y_pos: f32, scale: f32, time: f32, length_scale: f32) {
+        // Long sausage body that gets LONGER when full (not fatter!)
+        let body_length = 40.0 * scale * length_scale;
+        let body_height = 18.0 * scale;
+
+        // Draw elongated body
+        draw_ellipse(self.x, y_pos + 20.0 * scale, body_length, body_height, 0.0, self.breed.color());
+
+        // Belly marking
+        draw_ellipse(self.x, y_pos + 22.0 * scale, body_length * 0.8, body_height * 0.6, 0.0, self.breed.secondary_color());
+
+        // Head
+        draw_circle(self.x - body_length * 0.6, y_pos + 5.0 * scale, 15.0 * scale, self.breed.color());
+
+        // Long floppy ears
+        draw_ellipse(
+            self.x - body_length * 0.6 - 12.0 * scale,
+            y_pos + 10.0 * scale,
+            6.0 * scale,
+            18.0 * scale,
+            0.3,
+            self.breed.color(),
+        );
+        draw_ellipse(
+            self.x - body_length * 0.6 + 12.0 * scale,
+            y_pos + 10.0 * scale,
+            6.0 * scale,
+            18.0 * scale,
+            -0.3,
+            self.breed.color(),
+        );
+
+        // Eyes
+        let eye_size = if self.current_action == DogAction::Napping { 1.5 } else { 3.0 };
+        draw_circle(self.x - body_length * 0.6 - 5.0 * scale, y_pos + 2.0 * scale, eye_size * scale, BLACK);
+        draw_circle(self.x - body_length * 0.6 + 5.0 * scale, y_pos + 2.0 * scale, eye_size * scale, BLACK);
+
+        // Nose
+        draw_circle(self.x - body_length * 0.6, y_pos + 8.0 * scale, 3.0 * scale, BLACK);
+
+        // Short legs (stay same size)
+        let leg_width = 6.0 * scale;
+        let leg_height = 10.0 * scale;
+        draw_rectangle(self.x - body_length * 0.4, y_pos + 32.0 * scale, leg_width, leg_height, self.breed.color());
+        draw_rectangle(self.x - body_length * 0.2, y_pos + 32.0 * scale, leg_width, leg_height, self.breed.color());
+        draw_rectangle(self.x + body_length * 0.2, y_pos + 32.0 * scale, leg_width, leg_height, self.breed.color());
+        draw_rectangle(self.x + body_length * 0.4, y_pos + 32.0 * scale, leg_width, leg_height, self.breed.color());
+
+        // Tail at the back
+        let tail_angle = (time * 5.0 + self.animation_offset).sin() * 0.3;
+        let tail_x = self.x + body_length * 0.6 + tail_angle * 10.0;
+        draw_circle(tail_x, y_pos + 18.0 * scale, 5.0 * scale, self.breed.color());
+
+        self.draw_action_effects(y_pos, time);
+    }
+
+    fn draw_greyhound(&self, y_pos: f32, scale: f32, time: f32, height_scale: f32) {
+        // Tall, slim greyhound that gets TALLER with more energy
+        let body_width = 20.0 * scale;
+        let body_height = 25.0 * scale * height_scale;
+
+        // Slim body
+        draw_ellipse(self.x, y_pos + 15.0 * scale, body_width, body_height, 0.0, self.breed.color());
+
+        // White chest
+        draw_ellipse(self.x, y_pos + 18.0 * scale, body_width * 0.7, body_height * 0.6, 0.0, self.breed.secondary_color());
+
+        // Long neck extending upward
+        let neck_y = y_pos - 5.0 * scale * height_scale;
+        draw_ellipse(self.x, neck_y, 10.0 * scale, 15.0 * scale * height_scale, 0.0, self.breed.color());
+
+        // Small head
+        let head_y = neck_y - 12.0 * scale * height_scale;
+        draw_ellipse(self.x, head_y, 12.0 * scale, 14.0 * scale, 0.0, self.breed.color());
+
+        // Long snout
+        draw_ellipse(self.x, head_y + 6.0 * scale, 8.0 * scale, 10.0 * scale, 0.0, self.breed.secondary_color());
+
+        // Small pointy ears
+        draw_triangle(
+            vec2(self.x - 8.0 * scale, head_y - 10.0 * scale),
+            vec2(self.x - 10.0 * scale, head_y - 2.0 * scale),
+            vec2(self.x - 6.0 * scale, head_y - 2.0 * scale),
+            self.breed.color(),
+        );
+        draw_triangle(
+            vec2(self.x + 8.0 * scale, head_y - 10.0 * scale),
+            vec2(self.x + 6.0 * scale, head_y - 2.0 * scale),
+            vec2(self.x + 10.0 * scale, head_y - 2.0 * scale),
+            self.breed.color(),
+        );
+
+        // Eyes
+        let eye_size = if self.current_action == DogAction::Napping { 1.5 } else { 3.0 };
+        draw_circle(self.x - 4.0 * scale, head_y, eye_size * scale, BLACK);
+        draw_circle(self.x + 4.0 * scale, head_y, eye_size * scale, BLACK);
+
+        // Nose
+        draw_circle(self.x, head_y + 8.0 * scale, 3.0 * scale, BLACK);
+
+        // Long thin legs
+        let leg_width = 5.0 * scale;
+        let leg_height = 20.0 * scale;
+        draw_rectangle(self.x - 12.0 * scale, y_pos + 35.0 * scale, leg_width, leg_height, self.breed.color());
+        draw_rectangle(self.x + 7.0 * scale, y_pos + 35.0 * scale, leg_width, leg_height, self.breed.color());
+
+        // Thin tail
+        let tail_angle = (time * 6.0 + self.animation_offset).sin() * 0.4;
+        let tail_x = self.x + 18.0 * scale + tail_angle * 12.0;
+        for i in 0..3 {
+            let tx = tail_x + i as f32 * 5.0;
+            let ty = y_pos + 20.0 * scale + i as f32 * 3.0;
+            draw_circle(tx, ty, 3.0 * scale, self.breed.color());
+        }
+
+        self.draw_action_effects(y_pos, time);
+    }
+
+    fn draw_dirt(&self, y_pos: f32, scale: f32, time: f32) {
+        // Draw dirt smudges when cleanliness is low
+        let dirt_amount = 1.0 - (self.cleanliness as f32 / 60.0); // 0.0 to 1.0
+        let dirt_alpha = (dirt_amount * 180.0) as u8;
+        let dirt_color = Color::from_rgba(80, 60, 40, dirt_alpha);
+
+        // Random-ish dirt spots (use animation_offset as seed)
+        let spots = [
+            (0.0, 10.0, 6.0),
+            (12.0, 15.0, 8.0),
+            (-10.0, 12.0, 7.0),
+            (8.0, 22.0, 5.0),
+            (-15.0, 20.0, 6.0),
+        ];
+
+        for (i, (x_off, y_off, size)) in spots.iter().enumerate() {
+            let wobble = ((time + self.animation_offset + i as f32) * 2.0).sin() * 0.5;
+            draw_circle(
+                self.x + x_off * scale + wobble,
+                y_pos + y_off * scale,
+                size * scale * dirt_amount,
+                dirt_color,
+            );
+        }
+
+        // Extra dirt lines/smudges
+        if self.cleanliness < 30 {
+            for i in 0..3 {
+                let y = y_pos + (15.0 + i as f32 * 5.0) * scale;
+                draw_line(
+                    self.x - 8.0 * scale,
+                    y,
+                    self.x + 8.0 * scale,
+                    y,
+                    1.5,
+                    Color::from_rgba(70, 50, 30, dirt_alpha + 50),
+                );
+            }
+        }
     }
 
     fn draw_action_effects(&self, y_pos: f32, time: f32) {
@@ -946,6 +1151,8 @@ impl Daycare {
             ("Sadie", GermanShepherd, Friendly, 3),
             ("Whiskers", Cat, Calm, 4),
             ("Steve", Fursuit, Friendly, 28), // Obviously an adult human
+            ("Slinky", Dachshund, Playful, 5), // Sausage dog!
+            ("Zoom", Greyhound, Energetic, 3), // Fast and tall
         ];
 
         let num_dogs = (self.day % 5 + 2).min(4) as usize;
