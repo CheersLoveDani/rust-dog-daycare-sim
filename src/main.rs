@@ -41,6 +41,32 @@ impl Breed {
             Breed::GermanShepherd => Color::from_rgba(101, 67, 33, 255),
         }
     }
+
+    fn secondary_color(&self) -> Color {
+        match self {
+            Breed::GoldenRetriever => Color::from_rgba(255, 215, 100, 255),
+            Breed::Labrador => Color::from_rgba(160, 110, 60, 255),
+            Breed::Poodle => Color::from_rgba(240, 240, 240, 255),
+            Breed::Beagle => Color::from_rgba(255, 255, 255, 255),
+            Breed::Husky => Color::from_rgba(255, 255, 255, 255),
+            Breed::Corgi => Color::from_rgba(255, 255, 255, 255),
+            Breed::Bulldog => Color::from_rgba(180, 120, 70, 255),
+            Breed::GermanShepherd => Color::from_rgba(50, 40, 20, 255),
+        }
+    }
+
+    fn size_scale(&self) -> f32 {
+        match self {
+            Breed::GoldenRetriever => 1.0,
+            Breed::Labrador => 1.0,
+            Breed::Poodle => 0.9,
+            Breed::Beagle => 0.85,
+            Breed::Husky => 1.0,
+            Breed::Corgi => 0.8,
+            Breed::Bulldog => 0.95,
+            Breed::GermanShepherd => 1.1,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -64,6 +90,16 @@ impl Personality {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum DogAction {
+    Idle,
+    Playing,
+    Eating,
+    Napping,
+    Grooming,
+    Training,
+}
+
 #[derive(Debug, Clone)]
 struct Dog {
     name: String,
@@ -77,11 +113,14 @@ struct Dog {
     x: f32,
     y: f32,
     animation_offset: f32,
-    // Smooth stat transitions
     display_energy: f32,
     display_happiness: f32,
     display_hunger: f32,
     display_cleanliness: f32,
+    current_action: DogAction,
+    action_timer: f32,
+    bark_timer: f32,
+    bark_text: String,
 }
 
 impl Dog {
@@ -102,6 +141,10 @@ impl Dog {
             display_happiness: 70.0,
             display_hunger: 30.0,
             display_cleanliness: 100.0,
+            current_action: DogAction::Idle,
+            action_timer: 0.0,
+            bark_timer: 0.0,
+            bark_text: String::new(),
         }
     }
 
@@ -110,29 +153,49 @@ impl Dog {
         self.happiness = (self.happiness + 15).min(100);
         self.hunger = (self.hunger + 10).min(100);
         self.cleanliness = (self.cleanliness - 15).max(0);
+        self.current_action = DogAction::Playing;
+        self.action_timer = 2.0;
+        self.bark("Woof! Woof!");
     }
 
     fn feed(&mut self) {
         self.hunger = (self.hunger - 40).max(0);
         self.happiness = (self.happiness + 10).min(100);
         self.energy = (self.energy + 5).min(100);
+        self.current_action = DogAction::Eating;
+        self.action_timer = 2.0;
+        self.bark("Yum!");
     }
 
     fn nap(&mut self) {
         self.energy = (self.energy + 30).min(100);
         self.happiness = (self.happiness + 5).min(100);
         self.hunger = (self.hunger + 5).min(100);
+        self.current_action = DogAction::Napping;
+        self.action_timer = 3.0;
+        self.bark("Zzz...");
     }
 
     fn groom(&mut self) {
         self.cleanliness = 100;
         self.happiness = (self.happiness + 8).min(100);
+        self.current_action = DogAction::Grooming;
+        self.action_timer = 2.0;
+        self.bark("So clean!");
     }
 
     fn train(&mut self) {
         self.energy = (self.energy - 15).max(0);
         self.happiness = (self.happiness + 12).min(100);
         self.hunger = (self.hunger + 8).min(100);
+        self.current_action = DogAction::Training;
+        self.action_timer = 2.0;
+        self.bark("I'm learning!");
+    }
+
+    fn bark(&mut self, text: &str) {
+        self.bark_text = text.to_string();
+        self.bark_timer = 2.5;
     }
 
     fn pass_time(&mut self) {
@@ -140,6 +203,19 @@ impl Dog {
         self.hunger = (self.hunger + 8).min(100);
         self.happiness = (self.happiness - 3).max(0);
         self.cleanliness = (self.cleanliness - 5).max(0);
+    }
+
+    fn update(&mut self, dt: f32) {
+        self.update_display_stats();
+        if self.action_timer > 0.0 {
+            self.action_timer -= dt;
+            if self.action_timer <= 0.0 {
+                self.current_action = DogAction::Idle;
+            }
+        }
+        if self.bark_timer > 0.0 {
+            self.bark_timer -= dt;
+        }
     }
 
     fn update_display_stats(&mut self) {
@@ -183,63 +259,377 @@ impl Dog {
     }
 
     fn draw(&self, time: f32) {
-        let bounce = (time * 2.0 + self.animation_offset).sin() * 3.0;
+        let scale = self.breed.size_scale();
+        let bounce = match self.current_action {
+            DogAction::Playing => (time * 8.0 + self.animation_offset).sin() * 8.0,
+            DogAction::Eating => (time * 4.0).sin() * 1.5,
+            DogAction::Napping => 0.0,
+            _ => (time * 2.0 + self.animation_offset).sin() * 3.0,
+        };
         let y_pos = self.y + bounce;
 
         // Draw shadow
         draw_ellipse(
             self.x,
-            self.y + 45.0,
-            35.0,
-            15.0,
+            self.y + 45.0 * scale,
+            35.0 * scale,
+            15.0 * scale,
             0.0,
             Color::from_rgba(0, 0, 0, 50),
         );
 
         // Draw body
-        draw_circle(self.x, y_pos + 20.0, 25.0, self.breed.color());
+        let body_size = 25.0 * scale;
+        draw_circle(self.x, y_pos + 20.0 * scale, body_size, self.breed.color());
+
+        // Breed-specific body patterns
+        match self.breed {
+            Breed::Beagle | Breed::Husky | Breed::Corgi => {
+                // White belly
+                draw_circle(
+                    self.x,
+                    y_pos + 25.0 * scale,
+                    body_size * 0.7,
+                    self.breed.secondary_color(),
+                );
+            }
+            Breed::Poodle => {
+                // Fluffy poodle cuts
+                draw_circle(self.x - 15.0 * scale, y_pos + 20.0 * scale, 10.0 * scale, self.breed.color());
+                draw_circle(self.x + 15.0 * scale, y_pos + 20.0 * scale, 10.0 * scale, self.breed.color());
+            }
+            _ => {}
+        }
 
         // Draw head
-        draw_circle(self.x, y_pos, 20.0, self.breed.color());
+        let head_size = 20.0 * scale;
+        draw_circle(self.x, y_pos, head_size, self.breed.color());
 
-        // Draw ears
-        draw_circle(self.x - 15.0, y_pos - 5.0, 8.0, self.breed.color());
-        draw_circle(self.x + 15.0, y_pos - 5.0, 8.0, self.breed.color());
+        // Breed-specific head patterns
+        match self.breed {
+            Breed::Husky => {
+                // Face mask pattern
+                draw_circle(self.x - 8.0 * scale, y_pos - 2.0 * scale, 7.0 * scale, WHITE);
+                draw_circle(self.x + 8.0 * scale, y_pos - 2.0 * scale, 7.0 * scale, WHITE);
+                draw_circle(self.x, y_pos + 8.0 * scale, 10.0 * scale, WHITE);
+            }
+            Breed::Beagle => {
+                // Beagle face marking
+                draw_circle(self.x, y_pos, head_size * 0.8, WHITE);
+            }
+            _ => {}
+        }
+
+        // Draw breed-specific ears
+        match self.breed {
+            Breed::Beagle | Breed::Labrador | Breed::GoldenRetriever => {
+                // Floppy ears
+                draw_ellipse(
+                    self.x - 18.0 * scale,
+                    y_pos + 5.0 * scale,
+                    8.0 * scale,
+                    15.0 * scale,
+                    0.3,
+                    self.breed.color(),
+                );
+                draw_ellipse(
+                    self.x + 18.0 * scale,
+                    y_pos + 5.0 * scale,
+                    8.0 * scale,
+                    15.0 * scale,
+                    -0.3,
+                    self.breed.color(),
+                );
+            }
+            Breed::Husky | Breed::GermanShepherd => {
+                // Pointy ears
+                draw_triangle(
+                    vec2(self.x - 15.0 * scale, y_pos - 15.0 * scale),
+                    vec2(self.x - 18.0 * scale, y_pos - 5.0 * scale),
+                    vec2(self.x - 12.0 * scale, y_pos - 5.0 * scale),
+                    self.breed.color(),
+                );
+                draw_triangle(
+                    vec2(self.x + 15.0 * scale, y_pos - 15.0 * scale),
+                    vec2(self.x + 12.0 * scale, y_pos - 5.0 * scale),
+                    vec2(self.x + 18.0 * scale, y_pos - 5.0 * scale),
+                    self.breed.color(),
+                );
+            }
+            Breed::Poodle => {
+                // Fluffy round ears
+                draw_circle(self.x - 15.0 * scale, y_pos - 5.0 * scale, 10.0 * scale, self.breed.color());
+                draw_circle(self.x + 15.0 * scale, y_pos - 5.0 * scale, 10.0 * scale, self.breed.color());
+            }
+            Breed::Corgi => {
+                // Large pointed ears
+                draw_triangle(
+                    vec2(self.x - 12.0 * scale, y_pos - 18.0 * scale),
+                    vec2(self.x - 16.0 * scale, y_pos - 2.0 * scale),
+                    vec2(self.x - 8.0 * scale, y_pos - 2.0 * scale),
+                    self.breed.color(),
+                );
+                draw_triangle(
+                    vec2(self.x + 12.0 * scale, y_pos - 18.0 * scale),
+                    vec2(self.x + 8.0 * scale, y_pos - 2.0 * scale),
+                    vec2(self.x + 16.0 * scale, y_pos - 2.0 * scale),
+                    self.breed.color(),
+                );
+            }
+            Breed::Bulldog => {
+                // Small folded ears
+                draw_circle(self.x - 15.0 * scale, y_pos, 6.0 * scale, self.breed.color());
+                draw_circle(self.x + 15.0 * scale, y_pos, 6.0 * scale, self.breed.color());
+            }
+        }
 
         // Draw eyes
         let eye_color = if self.happiness > 60 { BLACK } else { GRAY };
-        draw_circle(self.x - 7.0, y_pos - 3.0, 3.0, eye_color);
-        draw_circle(self.x + 7.0, y_pos - 3.0, 3.0, eye_color);
+        let eye_size = match self.current_action {
+            DogAction::Napping => 1.5,
+            _ => 3.0,
+        };
+        draw_circle(self.x - 7.0 * scale, y_pos - 3.0 * scale, eye_size * scale, eye_color);
+        draw_circle(self.x + 7.0 * scale, y_pos - 3.0 * scale, eye_size * scale, eye_color);
+
+        // Add eye shine
+        if self.current_action != DogAction::Napping {
+            draw_circle(
+                self.x - 6.0 * scale,
+                y_pos - 4.0 * scale,
+                1.5 * scale,
+                WHITE,
+            );
+            draw_circle(
+                self.x + 8.0 * scale,
+                y_pos - 4.0 * scale,
+                1.5 * scale,
+                WHITE,
+            );
+        }
 
         // Draw nose
-        draw_circle(self.x, y_pos + 5.0, 4.0, BLACK);
+        draw_circle(self.x, y_pos + 5.0 * scale, 4.0 * scale, BLACK);
 
         // Draw mouth (smile if happy)
-        if self.happiness > 60 {
+        if self.happiness > 60 && self.current_action != DogAction::Eating {
             draw_line(
-                self.x - 8.0,
-                y_pos + 8.0,
+                self.x - 8.0 * scale,
+                y_pos + 8.0 * scale,
                 self.x,
-                y_pos + 12.0,
+                y_pos + 12.0 * scale,
                 2.0,
                 BLACK,
             );
-            draw_line(self.x, y_pos + 12.0, self.x + 8.0, y_pos + 8.0, 2.0, BLACK);
+            draw_line(
+                self.x,
+                y_pos + 12.0 * scale,
+                self.x + 8.0 * scale,
+                y_pos + 8.0 * scale,
+                2.0,
+                BLACK,
+            );
+        }
+
+        // Draw eating mouth
+        if self.current_action == DogAction::Eating {
+            let mouth_open = ((time * 10.0).sin() * 0.5 + 0.5) * 5.0;
+            draw_circle(self.x, y_pos + 10.0 * scale, 3.0 + mouth_open, Color::from_rgba(50, 25, 25, 255));
         }
 
         // Draw legs
-        draw_rectangle(self.x - 15.0, y_pos + 35.0, 8.0, 15.0, self.breed.color());
-        draw_rectangle(self.x + 7.0, y_pos + 35.0, 8.0, 15.0, self.breed.color());
+        let leg_width = 8.0 * scale;
+        let leg_height = 15.0 * scale;
+        if self.breed == Breed::Corgi {
+            // Corgi has short legs
+            let corgi_leg_height = 8.0 * scale;
+            draw_rectangle(
+                self.x - 15.0 * scale,
+                y_pos + 35.0 * scale,
+                leg_width,
+                corgi_leg_height,
+                self.breed.color(),
+            );
+            draw_rectangle(
+                self.x + 7.0 * scale,
+                y_pos + 35.0 * scale,
+                leg_width,
+                corgi_leg_height,
+                self.breed.color(),
+            );
+        } else {
+            draw_rectangle(
+                self.x - 15.0 * scale,
+                y_pos + 35.0 * scale,
+                leg_width,
+                leg_height,
+                self.breed.color(),
+            );
+            draw_rectangle(
+                self.x + 7.0 * scale,
+                y_pos + 35.0 * scale,
+                leg_width,
+                leg_height,
+                self.breed.color(),
+            );
+        }
 
         // Draw tail wagging
-        let tail_angle = (time * 5.0 + self.animation_offset).sin() * 0.3;
-        let tail_x = self.x + 20.0 + tail_angle * 10.0;
-        draw_circle(tail_x, y_pos + 15.0, 6.0, self.breed.color());
+        let tail_angle = match self.current_action {
+            DogAction::Playing => (time * 10.0 + self.animation_offset).sin() * 0.6,
+            DogAction::Eating => (time * 8.0 + self.animation_offset).sin() * 0.5,
+            DogAction::Napping => 0.0,
+            _ => (time * 5.0 + self.animation_offset).sin() * 0.3,
+        };
+        let tail_x = self.x + 20.0 * scale + tail_angle * 15.0;
 
-        // Draw name tag
-        let name_width = measure_text(&self.name, None, 16, 1.0).width;
-        draw_text(&self.name, self.x - name_width / 2.0, y_pos - 30.0, 16.0, WHITE);
+        // Breed-specific tails
+        match self.breed {
+            Breed::Husky | Breed::GermanShepherd => {
+                // Bushy tail
+                draw_circle(tail_x, y_pos + 12.0 * scale, 8.0 * scale, self.breed.color());
+                draw_circle(tail_x + 5.0 * scale, y_pos + 8.0 * scale, 7.0 * scale, self.breed.color());
+            }
+            Breed::Corgi => {
+                // Short fluffy tail
+                draw_circle(tail_x - 5.0 * scale, y_pos + 15.0 * scale, 5.0 * scale, self.breed.color());
+            }
+            _ => {
+                draw_circle(tail_x, y_pos + 15.0 * scale, 6.0 * scale, self.breed.color());
+            }
+        }
+
+        // Draw action-specific effects
+        match self.current_action {
+            DogAction::Grooming => {
+                // Sparkles
+                for i in 0..5 {
+                    let sparkle_angle = time * 3.0 + i as f32 * 1.2;
+                    let sparkle_dist = 30.0 + (time * 2.0 + i as f32).sin() * 5.0;
+                    let sx = self.x + sparkle_angle.cos() * sparkle_dist;
+                    let sy = y_pos + sparkle_angle.sin() * sparkle_dist;
+                    let sparkle_size = 2.0 + (time * 5.0 + i as f32).sin().abs() * 2.0;
+                    draw_circle(sx, sy, sparkle_size, YELLOW);
+                    draw_circle(sx, sy, sparkle_size * 0.5, WHITE);
+                }
+            }
+            DogAction::Training => {
+                // Concentration lines
+                for i in 0..3 {
+                    let line_offset = i as f32 * 8.0 - 8.0;
+                    draw_line(
+                        self.x + line_offset,
+                        y_pos - 40.0,
+                        self.x + line_offset,
+                        y_pos - 50.0,
+                        2.0,
+                        SKYBLUE,
+                    );
+                }
+            }
+            DogAction::Napping => {
+                // Zzz animation
+                let z_offset = (time * 2.0).sin() * 3.0;
+                draw_text_with_outline("Z", self.x + 25.0, y_pos - 20.0 + z_offset, 20.0, WHITE, BLACK);
+                draw_text_with_outline("z", self.x + 35.0, y_pos - 30.0 + z_offset * 0.7, 16.0, WHITE, BLACK);
+                draw_text_with_outline("z", self.x + 42.0, y_pos - 38.0 + z_offset * 0.5, 12.0, WHITE, BLACK);
+            }
+            _ => {}
+        }
+
+        // Draw bark speech bubble
+        if self.bark_timer > 0.0 {
+            let bubble_alpha = (self.bark_timer / 2.5 * 255.0).min(255.0) as u8;
+            let bubble_y = y_pos - 50.0 - (2.5 - self.bark_timer) * 20.0;
+
+            // Measure text
+            let text_dims = measure_text(&self.bark_text, None, 18, 1.0);
+            let bubble_width = text_dims.width + 20.0;
+            let bubble_height = 30.0;
+            let bubble_x = self.x - bubble_width / 2.0;
+
+            // Draw speech bubble with rounded corners
+            draw_rounded_rect(
+                bubble_x,
+                bubble_y,
+                bubble_width,
+                bubble_height,
+                15.0,
+                Color::from_rgba(255, 255, 255, bubble_alpha),
+            );
+            draw_rounded_rect_lines(
+                bubble_x,
+                bubble_y,
+                bubble_width,
+                bubble_height,
+                15.0,
+                3.0,
+                Color::from_rgba(100, 100, 100, bubble_alpha),
+            );
+
+            // Draw bubble tail
+            draw_triangle(
+                vec2(self.x, bubble_y + bubble_height),
+                vec2(self.x - 8.0, bubble_y + bubble_height + 10.0),
+                vec2(self.x + 8.0, bubble_y + bubble_height),
+                Color::from_rgba(255, 255, 255, bubble_alpha),
+            );
+
+            // Draw text
+            let text_color = Color::from_rgba(50, 50, 50, bubble_alpha);
+            draw_text(
+                &self.bark_text,
+                bubble_x + 10.0,
+                bubble_y + 20.0,
+                18.0,
+                text_color,
+            );
+        }
+
+        // Draw name tag with outline
+        draw_text_with_outline(&self.name, self.x - measure_text(&self.name, None, 16, 1.0).width / 2.0, y_pos - 30.0, 16.0, WHITE, BLACK);
     }
+}
+
+fn draw_text_with_outline(text: &str, x: f32, y: f32, font_size: f32, color: Color, outline_color: Color) {
+    // Draw outline
+    for dx in [-1.0, 0.0, 1.0].iter() {
+        for dy in [-1.0, 0.0, 1.0].iter() {
+            if *dx != 0.0 || *dy != 0.0 {
+                draw_text(text, x + dx, y + dy, font_size, outline_color);
+            }
+        }
+    }
+    // Draw main text
+    draw_text(text, x, y, font_size, color);
+}
+
+fn draw_rounded_rect(x: f32, y: f32, w: f32, h: f32, r: f32, color: Color) {
+    // Main rectangle
+    draw_rectangle(x + r, y, w - 2.0 * r, h, color);
+    draw_rectangle(x, y + r, w, h - 2.0 * r, color);
+
+    // Corners
+    draw_circle(x + r, y + r, r, color);
+    draw_circle(x + w - r, y + r, r, color);
+    draw_circle(x + r, y + h - r, r, color);
+    draw_circle(x + w - r, y + h - r, r, color);
+}
+
+fn draw_rounded_rect_lines(x: f32, y: f32, w: f32, h: f32, r: f32, thickness: f32, color: Color) {
+    // Top and bottom lines
+    draw_rectangle(x + r, y - thickness / 2.0, w - 2.0 * r, thickness, color);
+    draw_rectangle(x + r, y + h - thickness / 2.0, w - 2.0 * r, thickness, color);
+
+    // Left and right lines
+    draw_rectangle(x - thickness / 2.0, y + r, thickness, h - 2.0 * r, color);
+    draw_rectangle(x + w - thickness / 2.0, y + r, thickness, h - 2.0 * r, color);
+
+    // Corners
+    draw_circle_lines(x + r, y + r, r, thickness, color);
+    draw_circle_lines(x + w - r, y + r, r, thickness, color);
+    draw_circle_lines(x + r, y + h - r, r, thickness, color);
+    draw_circle_lines(x + w - r, y + h - r, r, thickness, color);
 }
 
 #[derive(Clone)]
@@ -298,7 +688,6 @@ impl Daycare {
         for _ in 0..hours {
             self.time += 1;
             if self.time >= 18 {
-                // Store day report data
                 self.day_reports = self
                     .dogs
                     .iter()
@@ -399,7 +788,7 @@ impl Particle {
     fn update(&mut self, dt: f32) {
         self.x += self.vx;
         self.y += self.vy;
-        self.vy += 0.2; // gravity
+        self.vy += 0.2;
         self.life -= dt;
     }
 
@@ -451,9 +840,13 @@ impl Button {
             && mouse_y >= self.y
             && mouse_y <= self.y + self.height;
 
-        // Pulse animation
         let pulse = (time * 3.0).sin() * 0.05 + 1.0;
-        let offset = if is_hovered { 2.0 } else { 0.0 };
+        let scale = if is_hovered { pulse } else { 1.0 };
+
+        let draw_x = self.x - (self.width * scale - self.width) / 2.0;
+        let draw_y = self.y - (self.height * scale - self.height) / 2.0;
+        let draw_width = self.width * scale;
+        let draw_height = self.height * scale;
 
         let draw_color = if is_hovered {
             self.hover_color
@@ -463,42 +856,26 @@ impl Button {
 
         // Glow effect when hovered
         if is_hovered {
-            draw_rectangle(
-                self.x - 2.0,
-                self.y - 2.0,
-                self.width + 4.0,
-                self.height + 4.0,
+            draw_rounded_rect(
+                draw_x - 4.0,
+                draw_y - 4.0,
+                draw_width + 8.0,
+                draw_height + 8.0,
+                20.0,
                 Color::from_rgba(255, 255, 255, 100),
             );
         }
 
-        draw_rectangle(
-            self.x - offset,
-            self.y - offset,
-            self.width + offset * 2.0,
-            self.height + offset * 2.0,
-            draw_color,
-        );
-        draw_rectangle_lines(
-            self.x - offset,
-            self.y - offset,
-            self.width + offset * 2.0,
-            self.height + offset * 2.0,
-            2.0,
-            WHITE,
-        );
+        // Draw button with rounded corners
+        draw_rounded_rect(draw_x, draw_y, draw_width, draw_height, 15.0, draw_color);
+        draw_rounded_rect_lines(draw_x, draw_y, draw_width, draw_height, 15.0, 3.0, WHITE);
 
-        let text_dims = measure_text(&self.text, None, 20, 1.0);
-        let scale = if is_hovered { pulse } else { 1.0 };
-        let font_size = 20.0 * scale;
+        // Draw text with shadow
+        let text_dims = measure_text(&self.text, None, 22, 1.0);
+        let text_x = draw_x + (draw_width - text_dims.width) / 2.0;
+        let text_y = draw_y + (draw_height + text_dims.height) / 2.0;
 
-        draw_text(
-            &self.text,
-            self.x + (self.width - text_dims.width * scale) / 2.0,
-            self.y + (self.height + text_dims.height * scale) / 2.0,
-            font_size,
-            WHITE,
-        );
+        draw_text_with_outline(&self.text, text_x, text_y, 22.0, WHITE, BLACK);
     }
 
     fn is_clicked(&self) -> bool {
@@ -526,8 +903,8 @@ fn draw_animated_stat_bar(
 ) {
     let fill_width = (value / max) * width;
 
-    // Background
-    draw_rectangle(x, y, width, 20.0, Color::from_rgba(50, 50, 50, 255));
+    // Background with rounded corners
+    draw_rounded_rect(x, y, width, 24.0, 12.0, Color::from_rgba(40, 40, 40, 255));
 
     // Animated shimmer effect
     let shimmer = (time * 2.0 + x / 100.0).sin() * 0.1 + 0.9;
@@ -538,27 +915,34 @@ fn draw_animated_stat_bar(
         255,
     );
 
-    // Fill bar
-    draw_rectangle(x, y, fill_width, 20.0, shimmer_color);
+    // Fill bar with rounded corners
+    if fill_width > 24.0 {
+        draw_rounded_rect(x, y, fill_width, 24.0, 12.0, shimmer_color);
+    } else if fill_width > 0.0 {
+        draw_circle(x + 12.0, y + 12.0, 12.0, shimmer_color);
+    }
 
     // Glossy effect
-    draw_rectangle(
-        x,
-        y,
-        fill_width,
-        8.0,
-        Color::from_rgba(255, 255, 255, 50),
-    );
+    if fill_width > 0.0 {
+        draw_rounded_rect(
+            x,
+            y,
+            fill_width.min(width),
+            10.0,
+            12.0,
+            Color::from_rgba(255, 255, 255, 50),
+        );
+    }
 
-    // Border
-    draw_rectangle_lines(x, y, width, 20.0, 2.0, WHITE);
+    // Border with rounded corners
+    draw_rounded_rect_lines(x, y, width, 24.0, 12.0, 3.0, WHITE);
 
-    // Label
-    draw_text(label, x, y - 5.0, 16.0, WHITE);
+    // Label with shadow
+    draw_text_with_outline(label, x, y - 5.0, 18.0, WHITE, BLACK);
 
-    // Value
+    // Value with shadow
     let value_text = format!("{:.0}/{}", value, max);
-    draw_text(&value_text, x + width + 5.0, y + 15.0, 16.0, WHITE);
+    draw_text_with_outline(&value_text, x + width + 10.0, y + 18.0, 18.0, WHITE, BLACK);
 }
 
 fn draw_floating_particles(particles: &[Particle]) {
@@ -610,50 +994,58 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
     let panel_y = (SCREEN_HEIGHT - panel_height) / 2.0 + (time * 2.0).sin() * 5.0;
 
     // Panel shadow
-    draw_rectangle(
+    draw_rounded_rect(
         panel_x + 5.0,
         panel_y + 5.0,
         panel_width,
         panel_height,
-        Color::from_rgba(0, 0, 0, 100),
+        30.0,
+        Color::from_rgba(0, 0, 0, 150),
     );
 
     // Panel background with gradient
-    draw_rectangle(
+    draw_rounded_rect(
         panel_x,
         panel_y,
         panel_width,
         panel_height,
+        30.0,
         Color::from_rgba(101, 67, 33, 255),
     );
-    draw_rectangle(
+    draw_rounded_rect(
         panel_x,
         panel_y,
         panel_width,
         100.0,
+        30.0,
         Color::from_rgba(139, 90, 43, 255),
     );
 
-    // Border
-    draw_rectangle_lines(panel_x, panel_y, panel_width, panel_height, 4.0, GOLD);
+    // Border with glow
+    draw_rounded_rect_lines(panel_x, panel_y, panel_width, panel_height, 30.0, 4.0, GOLD);
 
     // Title with animation
-    let title_scale = 1.0 + (time * 3.0).sin() * 0.05;
-    draw_text(
-        &format!("Day {} Complete!", daycare.day),
-        panel_x + 150.0,
-        panel_y + 50.0,
-        40.0 * title_scale,
+    let title = format!("Day {} Complete!", daycare.day);
+    let title_dims = measure_text(&title, None, 40, 1.0);
+    draw_text_with_outline(
+        &title,
+        panel_x + (panel_width - title_dims.width) / 2.0,
+        panel_y + 60.0,
+        40.0,
         YELLOW,
+        Color::from_rgba(100, 50, 0, 255),
     );
 
     // Score
-    draw_text(
-        &format!("Day Score: {} points", daycare.day_score),
-        panel_x + 200.0,
+    let score_text = format!("Day Score: {} points", daycare.day_score);
+    let score_dims = measure_text(&score_text, None, 24, 1.0);
+    draw_text_with_outline(
+        &score_text,
+        panel_x + (panel_width - score_dims.width) / 2.0,
         panel_y + 100.0,
         24.0,
         WHITE,
+        BLACK,
     );
 
     // Divider
@@ -662,35 +1054,37 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
         panel_y + 120.0,
         panel_x + panel_width - 20.0,
         panel_y + 120.0,
-        2.0,
+        3.0,
         GOLD,
     );
 
     // Dog reports
-    draw_text(
+    draw_text_with_outline(
         "Dog Happiness Report:",
         panel_x + 30.0,
         panel_y + 150.0,
-        20.0,
+        22.0,
         YELLOW,
+        BLACK,
     );
 
     for (i, report) in daycare.day_reports.iter().enumerate() {
-        let y = panel_y + 180.0 + i as f32 * 40.0;
+        let y = panel_y + 185.0 + i as f32 * 45.0;
         let bounce = (time * 3.0 + i as f32 * 0.5).sin() * 2.0;
 
         // Dog name and breed
-        draw_text(
+        draw_text_with_outline(
             &format!("{} ({})", report.name, report.breed.as_str()),
             panel_x + 30.0,
             y + bounce,
             18.0,
             WHITE,
+            BLACK,
         );
 
         // Happiness bar
-        let bar_width = 200.0;
-        let bar_x = panel_x + 300.0;
+        let bar_width = 180.0;
+        let bar_x = panel_x + 310.0;
         draw_animated_stat_bar(
             bar_x,
             y - 15.0 + bounce,
@@ -712,20 +1106,23 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
         } else {
             "☹️"
         };
-        draw_text(emoji, panel_x + 520.0, y + bounce, 24.0, WHITE);
+        draw_text(emoji, panel_x + 510.0, y + bounce, 28.0, WHITE);
     }
 
     // Total score
-    draw_text(
-        &format!("Total Score: {}", daycare.score),
-        panel_x + 200.0,
-        panel_y + panel_height - 80.0,
-        28.0,
+    let total_text = format!("Total Score: {}", daycare.score);
+    let total_dims = measure_text(&total_text, None, 30, 1.0);
+    draw_text_with_outline(
+        &total_text,
+        panel_x + (panel_width - total_dims.width) / 2.0,
+        panel_y + panel_height - 70.0,
+        30.0,
         GOLD,
+        BLACK,
     );
 
     // Continue button
-    let button_y = panel_y + panel_height - 50.0;
+    let button_y = panel_y + panel_height - 45.0;
     let button = Button::new(
         panel_x + 200.0,
         button_y,
@@ -753,12 +1150,12 @@ async fn main() {
     daycare.spawn_new_dogs();
 
     let action_buttons = vec![
-        Button::new(820.0, 150.0, 200.0, 50.0, "Play (1h)", BLUE),
-        Button::new(1040.0, 150.0, 200.0, 50.0, "Feed (1h)", GREEN),
-        Button::new(820.0, 220.0, 200.0, 50.0, "Nap (2h)", PURPLE),
-        Button::new(1040.0, 220.0, 200.0, 50.0, "Groom (1h)", PINK),
-        Button::new(820.0, 290.0, 200.0, 50.0, "Train (1h)", ORANGE),
-        Button::new(820.0, 360.0, 420.0, 50.0, "Pass Time (1h)", DARKGRAY),
+        Button::new(820.0, 150.0, 200.0, 55.0, "🎾 Play (1h)", BLUE),
+        Button::new(1040.0, 150.0, 200.0, 55.0, "🍖 Feed (1h)", GREEN),
+        Button::new(820.0, 220.0, 200.0, 55.0, "😴 Nap (2h)", PURPLE),
+        Button::new(1040.0, 220.0, 200.0, 55.0, "🛁 Groom (1h)", PINK),
+        Button::new(820.0, 290.0, 200.0, 55.0, "📚 Train (1h)", ORANGE),
+        Button::new(820.0, 370.0, 420.0, 55.0, "⏰ Pass Time (1h)", DARKGRAY),
     ];
 
     let mut particles: Vec<Particle> = Vec::new();
@@ -771,7 +1168,7 @@ async fn main() {
         let time = get_time() as f32;
         let dt = get_frame_time();
 
-        // Spawn background particles (floating hearts/stars)
+        // Spawn background particles
         particle_spawn_timer += dt;
         if particle_spawn_timer > 0.5 {
             particle_spawn_timer = 0.0;
@@ -804,12 +1201,11 @@ async fn main() {
         if daycare.state == GameState::DayReport {
             draw_day_report(&daycare, time);
 
-            // Check for continue button click
             let panel_width = 600.0;
             let panel_height = 500.0;
             let panel_x = (SCREEN_WIDTH - panel_width) / 2.0;
             let panel_y = (SCREEN_HEIGHT - panel_height) / 2.0 + (time * 2.0).sin() * 5.0;
-            let button_y = panel_y + panel_height - 50.0;
+            let button_y = panel_y + panel_height - 45.0;
 
             if is_mouse_button_pressed(MouseButton::Left) {
                 let (mouse_x, mouse_y) = mouse_position();
@@ -823,72 +1219,91 @@ async fn main() {
             }
         } else {
             draw_background(time);
-
-            // Draw floating background particles
             draw_floating_particles(&background_particles);
 
-            // Draw title with animation
+            // Draw title with animation and shadow
             let title_scale = 1.0 + (time * 2.0).sin() * 0.02;
-            draw_text(
-                "Dog Daycare Simulator",
-                20.0,
-                40.0,
+            draw_text_with_outline(
+                "🐕 Dog Daycare Simulator 🐕",
+                15.0,
+                45.0,
                 40.0 * title_scale,
+                Color::from_rgba(255, 220, 180, 255),
                 DARKBROWN,
             );
 
-            // Draw day, time, and score with glow
+            // Draw day, time, and score with bubble background
             let info_text = format!(
                 "Day: {} | Time: {}:00 | Score: {}",
                 daycare.day, daycare.time, daycare.score
             );
-            draw_text(&info_text, 22.0, 82.0, 24.0, BLACK);
-            draw_text(&info_text, 20.0, 80.0, 24.0, WHITE);
+            let info_dims = measure_text(&info_text, None, 24, 1.0);
+            draw_rounded_rect(
+                15.0,
+                55.0,
+                info_dims.width + 20.0,
+                35.0,
+                17.0,
+                Color::from_rgba(101, 67, 33, 220),
+            );
+            draw_text_with_outline(&info_text, 25.0, 80.0, 24.0, WHITE, BLACK);
 
-            // Draw message with slide animation
+            // Draw message with bubble
             if daycare.message_timer > 0.0 {
                 daycare.message_timer -= dt;
-                let msg_dims = measure_text(&daycare.message, None, 30, 1.0);
-                let msg_x = (800.0 - msg_dims.width) / 2.0;
+                let msg_dims = measure_text(&daycare.message, None, 28, 1.0);
+                let msg_x = (800.0 - msg_dims.width) / 2.0 - 15.0;
                 let slide_offset = if daycare.message_timer > 2.5 {
                     (3.0 - daycare.message_timer) * 100.0
                 } else {
                     0.0
                 };
 
-                draw_rectangle(
-                    msg_x - 10.0,
-                    100.0 - slide_offset,
-                    msg_dims.width + 20.0,
-                    40.0,
-                    Color::from_rgba(0, 0, 0, 220),
-                );
-                draw_text(
-                    &daycare.message,
+                draw_rounded_rect(
                     msg_x,
-                    130.0 - slide_offset,
-                    30.0,
-                    YELLOW,
+                    105.0 - slide_offset,
+                    msg_dims.width + 30.0,
+                    45.0,
+                    22.0,
+                    Color::from_rgba(255, 200, 50, 240),
+                );
+                draw_rounded_rect_lines(
+                    msg_x,
+                    105.0 - slide_offset,
+                    msg_dims.width + 30.0,
+                    45.0,
+                    22.0,
+                    3.0,
+                    Color::from_rgba(200, 150, 0, 255),
+                );
+                draw_text_with_outline(
+                    &daycare.message,
+                    msg_x + 15.0,
+                    135.0 - slide_offset,
+                    28.0,
+                    WHITE,
+                    Color::from_rgba(100, 50, 0, 255),
                 );
             }
 
             // Update and draw dogs
             for (i, dog) in daycare.dogs.iter_mut().enumerate() {
-                dog.update_display_stats();
+                dog.update(dt);
                 dog.draw(time);
 
                 // Highlight selected dog
                 if Some(i) == daycare.selected_dog {
-                    let pulse = (time * 4.0).sin() * 3.0 + 42.0;
-                    draw_circle_lines(dog.x, dog.y + 20.0, pulse, 3.0, YELLOW);
+                    let pulse = (time * 4.0).sin() * 3.0 + 45.0;
+                    draw_circle_lines(dog.x, dog.y + 20.0, pulse, 4.0, YELLOW);
                 }
 
                 // Draw alert icons for needs with pulse
                 let needs = dog.needs_attention();
                 if !needs.is_empty() {
-                    let pulse = (time * 6.0).sin() * 2.0 + 12.0;
-                    draw_circle(dog.x + 30.0, dog.y - 30.0, pulse, RED);
-                    draw_text("!", dog.x + 25.0, dog.y - 22.0, 24.0, WHITE);
+                    let pulse = (time * 6.0).sin() * 2.0 + 14.0;
+                    draw_circle(dog.x + 35.0, dog.y - 35.0, pulse, RED);
+                    draw_circle(dog.x + 35.0, dog.y - 35.0, pulse * 0.6, Color::from_rgba(255, 100, 100, 255));
+                    draw_text_with_outline("!", dog.x + 30.0, dog.y - 27.0, 28.0, WHITE, BLACK);
                 }
             }
 
@@ -908,7 +1323,7 @@ async fn main() {
                 }
             }
 
-            // Draw right panel with animated border
+            // Draw right panel with bubbly design
             draw_rectangle(
                 800.0,
                 0.0,
@@ -916,107 +1331,130 @@ async fn main() {
                 SCREEN_HEIGHT,
                 Color::from_rgba(101, 67, 33, 255),
             );
+
+            // Decorative bubbles on panel
+            for i in 0..8 {
+                let bubble_y = i as f32 * 100.0 + (time + i as f32).sin() * 10.0;
+                let bubble_x = 790.0 + (time * 0.5 + i as f32 * 0.8).cos() * 8.0;
+                draw_circle(bubble_x, bubble_y, 15.0, Color::from_rgba(120, 80, 40, 100));
+            }
+
             let border_glow = ((time * 2.0).sin() * 50.0 + 100.0) as u8;
-            draw_rectangle_lines(
+            draw_line(
                 800.0,
                 0.0,
-                480.0,
+                800.0,
                 SCREEN_HEIGHT,
-                3.0,
+                5.0,
                 Color::from_rgba(border_glow, border_glow / 2, 0, 255),
             );
 
             // Draw selected dog info
             if let Some(idx) = daycare.selected_dog {
                 if let Some(dog) = daycare.dogs.get(idx) {
-                    draw_text("Selected Dog:", 820.0, 30.0, 24.0, WHITE);
+                    // Info bubble
+                    draw_rounded_rect(815.0, 15.0, 450.0, 125.0, 20.0, Color::from_rgba(139, 90, 43, 255));
+                    draw_rounded_rect_lines(815.0, 15.0, 450.0, 125.0, 20.0, 3.0, GOLD);
 
-                    draw_text(&dog.name, 820.0, 60.0, 32.0, YELLOW);
-                    draw_text(
+                    draw_text_with_outline("Selected Dog:", 830.0, 40.0, 22.0, YELLOW, BLACK);
+                    draw_text_with_outline(&dog.name, 830.0, 70.0, 32.0, WHITE, Color::from_rgba(100, 50, 0, 255));
+                    draw_text_with_outline(
                         &format!("{} - {} years old", dog.breed.as_str(), dog.age),
-                        820.0,
-                        90.0,
+                        830.0,
+                        95.0,
                         18.0,
-                        WHITE,
+                        Color::from_rgba(255, 230, 200, 255),
+                        BLACK,
                     );
-                    draw_text(
+                    draw_text_with_outline(
                         &format!("Personality: {}", dog.personality.as_str()),
-                        820.0,
-                        115.0,
+                        830.0,
+                        118.0,
                         18.0,
-                        WHITE,
+                        Color::from_rgba(255, 230, 200, 255),
+                        BLACK,
                     );
 
                     // Draw animated stats
                     draw_animated_stat_bar(
-                        820.0,
-                        450.0,
+                        830.0,
+                        460.0,
                         400.0,
                         dog.display_energy,
                         100.0,
                         BLUE,
-                        "Energy",
+                        "⚡ Energy",
                         time,
                     );
                     draw_animated_stat_bar(
-                        820.0,
-                        490.0,
+                        830.0,
+                        505.0,
                         400.0,
                         dog.display_happiness,
                         100.0,
                         YELLOW,
-                        "Happiness",
+                        "😊 Happiness",
                         time,
                     );
                     draw_animated_stat_bar(
-                        820.0,
-                        530.0,
+                        830.0,
+                        550.0,
                         400.0,
                         100.0 - dog.display_hunger,
                         100.0,
                         GREEN,
-                        "Fullness",
+                        "🍖 Fullness",
                         time,
                     );
                     draw_animated_stat_bar(
-                        820.0,
-                        570.0,
+                        830.0,
+                        595.0,
                         400.0,
                         dog.display_cleanliness,
                         100.0,
                         SKYBLUE,
-                        "Cleanliness",
+                        "✨ Cleanliness",
                         time,
                     );
 
-                    draw_text(
+                    draw_text_with_outline(
                         &format!("Mood: {}", dog.get_mood()),
-                        820.0,
-                        620.0,
-                        20.0,
+                        830.0,
+                        655.0,
+                        22.0,
                         WHITE,
+                        BLACK,
                     );
 
                     let needs = dog.needs_attention();
                     if !needs.is_empty() {
-                        draw_text("Needs:", 820.0, 650.0, 20.0, RED);
+                        draw_text_with_outline("⚠️ Needs:", 830.0, 685.0, 20.0, RED, BLACK);
                         for (i, need) in needs.iter().enumerate() {
-                            draw_text(need, 820.0, 675.0 + i as f32 * 25.0, 18.0, ORANGE);
+                            draw_text_with_outline(
+                                need,
+                                830.0,
+                                710.0 + i as f32 * 25.0,
+                                18.0,
+                                ORANGE,
+                                BLACK,
+                            );
                         }
                     }
                 }
             } else {
                 let float_offset = (time * 2.0).sin() * 5.0;
-                draw_text(
-                    "Click a dog to select",
-                    820.0,
-                    300.0 + float_offset,
+                draw_rounded_rect(850.0, 280.0 + float_offset, 350.0, 60.0, 30.0, Color::from_rgba(139, 90, 43, 200));
+                draw_text_with_outline(
+                    "👆 Click a dog to select",
+                    880.0,
+                    320.0 + float_offset,
                     24.0,
                     WHITE,
+                    BLACK,
                 );
             }
 
-            // Draw action buttons with animations
+            // Draw action buttons
             for (i, button) in action_buttons.iter().enumerate() {
                 button.draw(time);
 
@@ -1068,9 +1506,8 @@ async fn main() {
                                 _ => (String::new(), 0, WHITE),
                             };
 
-                            // Spawn particles at dog location
                             if hours > 0 {
-                                for _ in 0..10 {
+                                for _ in 0..15 {
                                     particles.push(Particle::new(dog.x, dog.y, particle_color));
                                 }
                             }
@@ -1092,7 +1529,6 @@ async fn main() {
                 }
             }
 
-            // Draw action particles
             draw_floating_particles(&particles);
         }
 
