@@ -268,7 +268,6 @@ impl Dog {
         };
         let y_pos = self.y + bounce;
 
-        // Draw shadow
         draw_ellipse(
             self.x,
             self.y + 45.0 * scale,
@@ -278,14 +277,11 @@ impl Dog {
             Color::from_rgba(0, 0, 0, 50),
         );
 
-        // Draw body
         let body_size = 25.0 * scale;
         draw_circle(self.x, y_pos + 20.0 * scale, body_size, self.breed.color());
 
-        // Breed-specific body patterns
         match self.breed {
             Breed::Beagle | Breed::Husky | Breed::Corgi => {
-                // White belly
                 draw_circle(
                     self.x,
                     y_pos + 25.0 * scale,
@@ -294,36 +290,29 @@ impl Dog {
                 );
             }
             Breed::Poodle => {
-                // Fluffy poodle cuts
                 draw_circle(self.x - 15.0 * scale, y_pos + 20.0 * scale, 10.0 * scale, self.breed.color());
                 draw_circle(self.x + 15.0 * scale, y_pos + 20.0 * scale, 10.0 * scale, self.breed.color());
             }
             _ => {}
         }
 
-        // Draw head
         let head_size = 20.0 * scale;
         draw_circle(self.x, y_pos, head_size, self.breed.color());
 
-        // Breed-specific head patterns
         match self.breed {
             Breed::Husky => {
-                // Face mask pattern
                 draw_circle(self.x - 8.0 * scale, y_pos - 2.0 * scale, 7.0 * scale, WHITE);
                 draw_circle(self.x + 8.0 * scale, y_pos - 2.0 * scale, 7.0 * scale, WHITE);
                 draw_circle(self.x, y_pos + 8.0 * scale, 10.0 * scale, WHITE);
             }
             Breed::Beagle => {
-                // Beagle face marking
                 draw_circle(self.x, y_pos, head_size * 0.8, WHITE);
             }
             _ => {}
         }
 
-        // Draw breed-specific ears
         match self.breed {
             Breed::Beagle | Breed::Labrador | Breed::GoldenRetriever => {
-                // Floppy ears
                 draw_ellipse(
                     self.x - 18.0 * scale,
                     y_pos + 5.0 * scale,
@@ -342,7 +331,6 @@ impl Dog {
                 );
             }
             Breed::Husky | Breed::GermanShepherd => {
-                // Pointy ears
                 draw_triangle(
                     vec2(self.x - 15.0 * scale, y_pos - 15.0 * scale),
                     vec2(self.x - 18.0 * scale, y_pos - 5.0 * scale),
@@ -357,12 +345,10 @@ impl Dog {
                 );
             }
             Breed::Poodle => {
-                // Fluffy round ears
                 draw_circle(self.x - 15.0 * scale, y_pos - 5.0 * scale, 10.0 * scale, self.breed.color());
                 draw_circle(self.x + 15.0 * scale, y_pos - 5.0 * scale, 10.0 * scale, self.breed.color());
             }
             Breed::Corgi => {
-                // Large pointed ears
                 draw_triangle(
                     vec2(self.x - 12.0 * scale, y_pos - 18.0 * scale),
                     vec2(self.x - 16.0 * scale, y_pos - 2.0 * scale),
@@ -377,13 +363,11 @@ impl Dog {
                 );
             }
             Breed::Bulldog => {
-                // Small folded ears
                 draw_circle(self.x - 15.0 * scale, y_pos, 6.0 * scale, self.breed.color());
                 draw_circle(self.x + 15.0 * scale, y_pos, 6.0 * scale, self.breed.color());
             }
         }
 
-        // Draw eyes
         let eye_color = if self.happiness > 60 { BLACK } else { GRAY };
         let eye_size = match self.current_action {
             DogAction::Napping => 1.5,
@@ -392,7 +376,6 @@ impl Dog {
         draw_circle(self.x - 7.0 * scale, y_pos - 3.0 * scale, eye_size * scale, eye_color);
         draw_circle(self.x + 7.0 * scale, y_pos - 3.0 * scale, eye_size * scale, eye_color);
 
-        // Add eye shine
         if self.current_action != DogAction::Napping {
             draw_circle(
                 self.x - 6.0 * scale,
@@ -408,10 +391,8 @@ impl Dog {
             );
         }
 
-        // Draw nose
         draw_circle(self.x, y_pos + 5.0 * scale, 4.0 * scale, BLACK);
 
-        // Draw mouth (smile if happy)
         if self.happiness > 60 && self.current_action != DogAction::Eating {
             draw_line(
                 self.x - 8.0 * scale,
@@ -431,17 +412,14 @@ impl Dog {
             );
         }
 
-        // Draw eating mouth
         if self.current_action == DogAction::Eating {
             let mouth_open = ((time * 10.0).sin() * 0.5 + 0.5) * 5.0;
             draw_circle(self.x, y_pos + 10.0 * scale, 3.0 + mouth_open, Color::from_rgba(50, 25, 25, 255));
         }
 
-        // Draw legs
         let leg_width = 8.0 * scale;
         let leg_height = 15.0 * scale;
         if self.breed == Breed::Corgi {
-            // Corgi has short legs
             let corgi_leg_height = 8.0 * scale;
             draw_rectangle(
                 self.x - 15.0 * scale,
@@ -474,7 +452,6 @@ impl Dog {
             );
         }
 
-        // Draw tail wagging
         let tail_angle = match self.current_action {
             DogAction::Playing => (time * 10.0 + self.animation_offset).sin() * 0.6,
             DogAction::Eating => (time * 8.0 + self.animation_offset).sin() * 0.5,
@@ -483,15 +460,12 @@ impl Dog {
         };
         let tail_x = self.x + 20.0 * scale + tail_angle * 15.0;
 
-        // Breed-specific tails
         match self.breed {
             Breed::Husky | Breed::GermanShepherd => {
-                // Bushy tail
                 draw_circle(tail_x, y_pos + 12.0 * scale, 8.0 * scale, self.breed.color());
                 draw_circle(tail_x + 5.0 * scale, y_pos + 8.0 * scale, 7.0 * scale, self.breed.color());
             }
             Breed::Corgi => {
-                // Short fluffy tail
                 draw_circle(tail_x - 5.0 * scale, y_pos + 15.0 * scale, 5.0 * scale, self.breed.color());
             }
             _ => {
@@ -499,10 +473,8 @@ impl Dog {
             }
         }
 
-        // Draw action-specific effects
         match self.current_action {
             DogAction::Grooming => {
-                // Sparkles
                 for i in 0..5 {
                     let sparkle_angle = time * 3.0 + i as f32 * 1.2;
                     let sparkle_dist = 30.0 + (time * 2.0 + i as f32).sin() * 5.0;
@@ -514,7 +486,6 @@ impl Dog {
                 }
             }
             DogAction::Training => {
-                // Concentration lines
                 for i in 0..3 {
                     let line_offset = i as f32 * 8.0 - 8.0;
                     draw_line(
@@ -528,7 +499,6 @@ impl Dog {
                 }
             }
             DogAction::Napping => {
-                // Zzz animation
                 let z_offset = (time * 2.0).sin() * 3.0;
                 draw_text_with_outline("Z", self.x + 25.0, y_pos - 20.0 + z_offset, 20.0, WHITE, BLACK);
                 draw_text_with_outline("z", self.x + 35.0, y_pos - 30.0 + z_offset * 0.7, 16.0, WHITE, BLACK);
@@ -537,18 +507,15 @@ impl Dog {
             _ => {}
         }
 
-        // Draw bark speech bubble
         if self.bark_timer > 0.0 {
             let bubble_alpha = (self.bark_timer / 2.5 * 255.0).min(255.0) as u8;
             let bubble_y = y_pos - 50.0 - (2.5 - self.bark_timer) * 20.0;
 
-            // Measure text
             let text_dims = measure_text(&self.bark_text, None, 18, 1.0);
             let bubble_width = text_dims.width + 20.0;
             let bubble_height = 30.0;
             let bubble_x = self.x - bubble_width / 2.0;
 
-            // Draw speech bubble with rounded corners
             draw_rounded_rect(
                 bubble_x,
                 bubble_y,
@@ -567,7 +534,6 @@ impl Dog {
                 Color::from_rgba(100, 100, 100, bubble_alpha),
             );
 
-            // Draw bubble tail
             draw_triangle(
                 vec2(self.x, bubble_y + bubble_height),
                 vec2(self.x - 8.0, bubble_y + bubble_height + 10.0),
@@ -575,7 +541,6 @@ impl Dog {
                 Color::from_rgba(255, 255, 255, bubble_alpha),
             );
 
-            // Draw text
             let text_color = Color::from_rgba(50, 50, 50, bubble_alpha);
             draw_text(
                 &self.bark_text,
@@ -586,13 +551,11 @@ impl Dog {
             );
         }
 
-        // Draw name tag with outline
         draw_text_with_outline(&self.name, self.x - measure_text(&self.name, None, 16, 1.0).width / 2.0, y_pos - 30.0, 16.0, WHITE, BLACK);
     }
 }
 
 fn draw_text_with_outline(text: &str, x: f32, y: f32, font_size: f32, color: Color, outline_color: Color) {
-    // Draw outline
     for dx in [-1.0, 0.0, 1.0].iter() {
         for dy in [-1.0, 0.0, 1.0].iter() {
             if *dx != 0.0 || *dy != 0.0 {
@@ -600,16 +563,13 @@ fn draw_text_with_outline(text: &str, x: f32, y: f32, font_size: f32, color: Col
             }
         }
     }
-    // Draw main text
     draw_text(text, x, y, font_size, color);
 }
 
 fn draw_rounded_rect(x: f32, y: f32, w: f32, h: f32, r: f32, color: Color) {
-    // Main rectangle
     draw_rectangle(x + r, y, w - 2.0 * r, h, color);
     draw_rectangle(x, y + r, w, h - 2.0 * r, color);
 
-    // Corners
     draw_circle(x + r, y + r, r, color);
     draw_circle(x + w - r, y + r, r, color);
     draw_circle(x + r, y + h - r, r, color);
@@ -617,19 +577,57 @@ fn draw_rounded_rect(x: f32, y: f32, w: f32, h: f32, r: f32, color: Color) {
 }
 
 fn draw_rounded_rect_lines(x: f32, y: f32, w: f32, h: f32, r: f32, thickness: f32, color: Color) {
-    // Top and bottom lines
     draw_rectangle(x + r, y - thickness / 2.0, w - 2.0 * r, thickness, color);
     draw_rectangle(x + r, y + h - thickness / 2.0, w - 2.0 * r, thickness, color);
 
-    // Left and right lines
     draw_rectangle(x - thickness / 2.0, y + r, thickness, h - 2.0 * r, color);
     draw_rectangle(x + w - thickness / 2.0, y + r, thickness, h - 2.0 * r, color);
 
-    // Corners
     draw_circle_lines(x + r, y + r, r, thickness, color);
     draw_circle_lines(x + w - r, y + r, r, thickness, color);
     draw_circle_lines(x + r, y + h - r, r, thickness, color);
     draw_circle_lines(x + w - r, y + h - r, r, thickness, color);
+}
+
+// Bone-shaped stat bar
+fn draw_bone_bar(x: f32, y: f32, width: f32, value: f32, max: f32, color: Color, label: &str, time: f32) {
+    let fill_width = (value / max) * width;
+    let bone_height = 24.0;
+    let end_radius = 12.0;
+
+    // Background bone shape
+    draw_rectangle(x + end_radius, y, width - 2.0 * end_radius, bone_height, Color::from_rgba(40, 40, 40, 255));
+    draw_circle(x + end_radius, y + bone_height / 2.0, end_radius, Color::from_rgba(40, 40, 40, 255));
+    draw_circle(x + width - end_radius, y + bone_height / 2.0, end_radius, Color::from_rgba(40, 40, 40, 255));
+
+    // Animated shimmer effect
+    let shimmer = (time * 2.0 + x / 100.0).sin() * 0.1 + 0.9;
+    let shimmer_color = Color::from_rgba(
+        (color.r as f32 * shimmer) as u8,
+        (color.g as f32 * shimmer) as u8,
+        (color.b as f32 * shimmer) as u8,
+        255,
+    );
+
+    // Fill bone shape
+    if fill_width > end_radius * 2.0 {
+        draw_rectangle(x + end_radius, y, fill_width - 2.0 * end_radius, bone_height, shimmer_color);
+        draw_circle(x + end_radius, y + bone_height / 2.0, end_radius, shimmer_color);
+        draw_circle(x + fill_width - end_radius, y + bone_height / 2.0, end_radius, shimmer_color);
+
+        // Glossy effect
+        draw_rectangle(x + end_radius, y, fill_width - 2.0 * end_radius, 10.0, Color::from_rgba(255, 255, 255, 50));
+        draw_circle(x + end_radius, y + 5.0, 8.0, Color::from_rgba(255, 255, 255, 50));
+    } else if fill_width > 0.0 {
+        draw_circle(x + end_radius, y + bone_height / 2.0, end_radius, shimmer_color);
+    }
+
+    // Label with shadow
+    draw_text_with_outline(label, x, y - 5.0, 18.0, WHITE, BLACK);
+
+    // Value with shadow
+    let value_text = format!("{:.0}/{}", value, max);
+    draw_text_with_outline(&value_text, x + width + 10.0, y + 18.0, 18.0, WHITE, BLACK);
 }
 
 #[derive(Clone)]
@@ -639,10 +637,20 @@ struct DogReport {
     happiness: i32,
 }
 
+#[derive(Clone, Copy)]
+struct Upgrade {
+    name: &'static str,
+    description: &'static str,
+    cost: i32,
+    level: i32,
+    max_level: i32,
+}
+
 #[derive(PartialEq)]
 enum GameState {
     Playing,
     DayReport,
+    Shop,
 }
 
 struct Daycare {
@@ -650,27 +658,69 @@ struct Daycare {
     day: u32,
     time: u32,
     score: i32,
+    money: i32,
     selected_dog: Option<usize>,
     message: String,
     message_timer: f32,
     state: GameState,
     day_reports: Vec<DogReport>,
     day_score: i32,
+    upgrades: Vec<Upgrade>,
 }
 
 impl Daycare {
     fn new() -> Self {
+        let upgrades = vec![
+            Upgrade {
+                name: "Better Food",
+                description: "+10% happiness from feeding",
+                cost: 50,
+                level: 0,
+                max_level: 5,
+            },
+            Upgrade {
+                name: "Comfy Beds",
+                description: "+15% energy from naps",
+                cost: 75,
+                level: 0,
+                max_level: 5,
+            },
+            Upgrade {
+                name: "Premium Toys",
+                description: "+10% happiness from play",
+                cost: 60,
+                level: 0,
+                max_level: 5,
+            },
+            Upgrade {
+                name: "Training Program",
+                description: "+20% effectiveness",
+                cost: 100,
+                level: 0,
+                max_level: 3,
+            },
+            Upgrade {
+                name: "Spa Treatment",
+                description: "Grooming gives +15 happiness",
+                cost: 80,
+                level: 0,
+                max_level: 3,
+            },
+        ];
+
         Daycare {
             dogs: Vec::new(),
             day: 1,
             time: 8,
             score: 0,
+            money: 100, // Starting money
             selected_dog: None,
             message: String::new(),
             message_timer: 0.0,
             state: GameState::Playing,
             day_reports: Vec::new(),
             day_score: 0,
+            upgrades,
         }
     }
 
@@ -700,6 +750,11 @@ impl Daycare {
 
                 self.day_score = self.dogs.iter().map(|d| d.happiness).sum();
                 self.score += self.day_score;
+
+                // Earn money based on performance
+                let earned_money = (self.day_score as f32 * 0.5) as i32;
+                self.money += earned_money;
+
                 self.state = GameState::DayReport;
                 return;
             } else {
@@ -757,6 +812,22 @@ impl Daycare {
                 y,
             ));
         }
+    }
+
+    fn buy_upgrade(&mut self, index: usize) -> bool {
+        if index < self.upgrades.len() {
+            let upgrade_level = self.upgrades[index].level;
+            let upgrade_max_level = self.upgrades[index].max_level;
+            let upgrade_cost = self.upgrades[index].cost;
+
+            if upgrade_level < upgrade_max_level && self.money >= upgrade_cost {
+                self.money -= upgrade_cost;
+                self.upgrades[index].level += 1;
+                self.upgrades[index].cost = (upgrade_cost as f32 * 1.5) as i32;
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -854,7 +925,6 @@ impl Button {
             self.color
         };
 
-        // Glow effect when hovered
         if is_hovered {
             draw_rounded_rect(
                 draw_x - 4.0,
@@ -866,11 +936,9 @@ impl Button {
             );
         }
 
-        // Draw button with rounded corners
         draw_rounded_rect(draw_x, draw_y, draw_width, draw_height, 15.0, draw_color);
         draw_rounded_rect_lines(draw_x, draw_y, draw_width, draw_height, 15.0, 3.0, WHITE);
 
-        // Draw text with shadow
         let text_dims = measure_text(&self.text, None, 22, 1.0);
         let text_x = draw_x + (draw_width - text_dims.width) / 2.0;
         let text_y = draw_y + (draw_height + text_dims.height) / 2.0;
@@ -891,60 +959,6 @@ impl Button {
     }
 }
 
-fn draw_animated_stat_bar(
-    x: f32,
-    y: f32,
-    width: f32,
-    value: f32,
-    max: f32,
-    color: Color,
-    label: &str,
-    time: f32,
-) {
-    let fill_width = (value / max) * width;
-
-    // Background with rounded corners
-    draw_rounded_rect(x, y, width, 24.0, 12.0, Color::from_rgba(40, 40, 40, 255));
-
-    // Animated shimmer effect
-    let shimmer = (time * 2.0 + x / 100.0).sin() * 0.1 + 0.9;
-    let shimmer_color = Color::from_rgba(
-        (color.r as f32 * shimmer) as u8,
-        (color.g as f32 * shimmer) as u8,
-        (color.b as f32 * shimmer) as u8,
-        255,
-    );
-
-    // Fill bar with rounded corners
-    if fill_width > 24.0 {
-        draw_rounded_rect(x, y, fill_width, 24.0, 12.0, shimmer_color);
-    } else if fill_width > 0.0 {
-        draw_circle(x + 12.0, y + 12.0, 12.0, shimmer_color);
-    }
-
-    // Glossy effect
-    if fill_width > 0.0 {
-        draw_rounded_rect(
-            x,
-            y,
-            fill_width.min(width),
-            10.0,
-            12.0,
-            Color::from_rgba(255, 255, 255, 50),
-        );
-    }
-
-    // Border with rounded corners
-    draw_rounded_rect_lines(x, y, width, 24.0, 12.0, 3.0, WHITE);
-
-    // Label with shadow
-    draw_text_with_outline(label, x, y - 5.0, 18.0, WHITE, BLACK);
-
-    // Value with shadow
-    let value_text = format!("{:.0}/{}", value, max);
-    draw_text_with_outline(&value_text, x + width + 10.0, y + 18.0, 18.0, WHITE, BLACK);
-}
-
 fn draw_floating_particles(particles: &[Particle]) {
     for particle in particles {
         particle.draw();
@@ -952,7 +966,6 @@ fn draw_floating_particles(particles: &[Particle]) {
 }
 
 fn draw_background(time: f32) {
-    // Animated sky gradient
     for i in 0..50 {
         let y = i as f32 * 10.0;
         let alpha = 100 - (i * 2);
@@ -966,10 +979,8 @@ fn draw_background(time: f32) {
         );
     }
 
-    // Animated grass
     draw_rectangle(0.0, 500.0, 800.0, 220.0, Color::from_rgba(34, 139, 34, 255));
 
-    // Grass blades animation
     for i in 0..20 {
         let x = i as f32 * 40.0 + (time * 2.0 + i as f32).sin() * 2.0;
         let y = 500.0 + (time + i as f32 * 0.5).sin() * 3.0;
@@ -977,8 +988,7 @@ fn draw_background(time: f32) {
     }
 }
 
-fn draw_day_report(daycare: &Daycare, time: f32) {
-    // Semi-transparent overlay
+fn draw_shop(daycare: &mut Daycare, time: f32) {
     draw_rectangle(
         0.0,
         0.0,
@@ -987,13 +997,11 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
         Color::from_rgba(0, 0, 0, 200),
     );
 
-    // Animated report panel
-    let panel_width = 600.0;
-    let panel_height = 500.0;
+    let panel_width = 700.0;
+    let panel_height = 600.0;
     let panel_x = (SCREEN_WIDTH - panel_width) / 2.0;
-    let panel_y = (SCREEN_HEIGHT - panel_height) / 2.0 + (time * 2.0).sin() * 5.0;
+    let panel_y = (SCREEN_HEIGHT - panel_height) / 2.0;
 
-    // Panel shadow
     draw_rounded_rect(
         panel_x + 5.0,
         panel_y + 5.0,
@@ -1003,7 +1011,160 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
         Color::from_rgba(0, 0, 0, 150),
     );
 
-    // Panel background with gradient
+    draw_rounded_rect(
+        panel_x,
+        panel_y,
+        panel_width,
+        panel_height,
+        30.0,
+        Color::from_rgba(101, 67, 33, 255),
+    );
+
+    draw_rounded_rect_lines(panel_x, panel_y, panel_width, panel_height, 30.0, 4.0, GOLD);
+
+    draw_text_with_outline(
+        "🏪 Daycare Shop",
+        panel_x + 220.0,
+        panel_y + 50.0,
+        40.0,
+        YELLOW,
+        Color::from_rgba(100, 50, 0, 255),
+    );
+
+    draw_text_with_outline(
+        &format!("💰 Money: ${}", daycare.money),
+        panel_x + 30.0,
+        panel_y + 100.0,
+        28.0,
+        GREEN,
+        BLACK,
+    );
+
+    let upgrades_start_y = panel_y + 130.0;
+    for (i, upgrade) in daycare.upgrades.iter().enumerate() {
+        let y = upgrades_start_y + i as f32 * 80.0;
+        let is_maxed = upgrade.level >= upgrade.max_level;
+        let can_afford = daycare.money >= upgrade.cost;
+
+        let bg_color = if is_maxed {
+            Color::from_rgba(50, 80, 50, 255)
+        } else if can_afford {
+            Color::from_rgba(139, 90, 43, 255)
+        } else {
+            Color::from_rgba(80, 60, 40, 255)
+        };
+
+        draw_rounded_rect(panel_x + 30.0, y, 640.0, 70.0, 15.0, bg_color);
+        draw_rounded_rect_lines(panel_x + 30.0, y, 640.0, 70.0, 15.0, 2.0, GOLD);
+
+        draw_text_with_outline(
+            upgrade.name,
+            panel_x + 45.0,
+            y + 25.0,
+            22.0,
+            WHITE,
+            BLACK,
+        );
+
+        draw_text_with_outline(
+            upgrade.description,
+            panel_x + 45.0,
+            y + 50.0,
+            16.0,
+            Color::from_rgba(200, 200, 200, 255),
+            BLACK,
+        );
+
+        let level_text = format!("Level: {}/{}", upgrade.level, upgrade.max_level);
+        draw_text_with_outline(
+            &level_text,
+            panel_x + 450.0,
+            y + 30.0,
+            18.0,
+            YELLOW,
+            BLACK,
+        );
+
+        if !is_maxed {
+            let cost_text = format!("${}", upgrade.cost);
+            let cost_color = if can_afford { GREEN } else { RED };
+            draw_text_with_outline(
+                &cost_text,
+                panel_x + 560.0,
+                y + 55.0,
+                20.0,
+                cost_color,
+                BLACK,
+            );
+        } else {
+            draw_text_with_outline(
+                "MAX",
+                panel_x + 580.0,
+                y + 55.0,
+                20.0,
+                GOLD,
+                BLACK,
+            );
+        }
+    }
+
+    let close_button = Button::new(
+        panel_x + 250.0,
+        panel_y + panel_height - 60.0,
+        200.0,
+        45.0,
+        "Close Shop",
+        DARKGRAY,
+    );
+    close_button.draw(time);
+
+    if close_button.is_clicked() {
+        daycare.state = GameState::Playing;
+    }
+
+    // Check upgrade clicks
+    if is_mouse_button_pressed(MouseButton::Left) {
+        let (mouse_x, mouse_y) = mouse_position();
+        for (i, _) in daycare.upgrades.clone().iter().enumerate() {
+            let y = upgrades_start_y + i as f32 * 80.0;
+            if mouse_x >= panel_x + 30.0
+                && mouse_x <= panel_x + 670.0
+                && mouse_y >= y
+                && mouse_y <= y + 70.0
+            {
+                if daycare.buy_upgrade(i) {
+                    daycare.show_message("Upgrade purchased!");
+                } else {
+                    daycare.show_message("Not enough money or max level!");
+                }
+            }
+        }
+    }
+}
+
+fn draw_day_report(daycare: &Daycare, time: f32) {
+    draw_rectangle(
+        0.0,
+        0.0,
+        SCREEN_WIDTH,
+        SCREEN_HEIGHT,
+        Color::from_rgba(0, 0, 0, 200),
+    );
+
+    let panel_width = 600.0;
+    let panel_height = 550.0;
+    let panel_x = (SCREEN_WIDTH - panel_width) / 2.0;
+    let panel_y = (SCREEN_HEIGHT - panel_height) / 2.0 + (time * 2.0).sin() * 5.0;
+
+    draw_rounded_rect(
+        panel_x + 5.0,
+        panel_y + 5.0,
+        panel_width,
+        panel_height,
+        30.0,
+        Color::from_rgba(0, 0, 0, 150),
+    );
+
     draw_rounded_rect(
         panel_x,
         panel_y,
@@ -1021,10 +1182,8 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
         Color::from_rgba(139, 90, 43, 255),
     );
 
-    // Border with glow
     draw_rounded_rect_lines(panel_x, panel_y, panel_width, panel_height, 30.0, 4.0, GOLD);
 
-    // Title with animation
     let title = format!("Day {} Complete!", daycare.day);
     let title_dims = measure_text(&title, None, 40, 1.0);
     draw_text_with_outline(
@@ -1036,19 +1195,18 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
         Color::from_rgba(100, 50, 0, 255),
     );
 
-    // Score
-    let score_text = format!("Day Score: {} points", daycare.day_score);
-    let score_dims = measure_text(&score_text, None, 24, 1.0);
+    let earned_money = (daycare.day_score as f32 * 0.5) as i32;
+    let score_text = format!("Score: {} points | Earned: ${}", daycare.day_score, earned_money);
+    let score_dims = measure_text(&score_text, None, 22, 1.0);
     draw_text_with_outline(
         &score_text,
         panel_x + (panel_width - score_dims.width) / 2.0,
         panel_y + 100.0,
-        24.0,
+        22.0,
         WHITE,
         BLACK,
     );
 
-    // Divider
     draw_line(
         panel_x + 20.0,
         panel_y + 120.0,
@@ -1058,7 +1216,6 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
         GOLD,
     );
 
-    // Dog reports
     draw_text_with_outline(
         "Dog Happiness Report:",
         panel_x + 30.0,
@@ -1072,7 +1229,6 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
         let y = panel_y + 185.0 + i as f32 * 45.0;
         let bounce = (time * 3.0 + i as f32 * 0.5).sin() * 2.0;
 
-        // Dog name and breed
         draw_text_with_outline(
             &format!("{} ({})", report.name, report.breed.as_str()),
             panel_x + 30.0,
@@ -1082,10 +1238,9 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
             BLACK,
         );
 
-        // Happiness bar
         let bar_width = 180.0;
         let bar_x = panel_x + 310.0;
-        draw_animated_stat_bar(
+        draw_bone_bar(
             bar_x,
             y - 15.0 + bounce,
             bar_width,
@@ -1096,7 +1251,6 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
             time,
         );
 
-        // Emoji based on happiness
         let emoji = if report.happiness > 80 {
             "😊"
         } else if report.happiness > 60 {
@@ -1109,29 +1263,36 @@ fn draw_day_report(daycare: &Daycare, time: f32) {
         draw_text(emoji, panel_x + 510.0, y + bounce, 28.0, WHITE);
     }
 
-    // Total score
-    let total_text = format!("Total Score: {}", daycare.score);
-    let total_dims = measure_text(&total_text, None, 30, 1.0);
+    let total_text = format!("Total: ${} | Score: {}", daycare.money, daycare.score);
+    let total_dims = measure_text(&total_text, None, 26, 1.0);
     draw_text_with_outline(
         &total_text,
         panel_x + (panel_width - total_dims.width) / 2.0,
-        panel_y + panel_height - 70.0,
-        30.0,
+        panel_y + panel_height - 100.0,
+        26.0,
         GOLD,
         BLACK,
     );
 
-    // Continue button
-    let button_y = panel_y + panel_height - 45.0;
-    let button = Button::new(
-        panel_x + 200.0,
+    let button_y = panel_y + panel_height - 60.0;
+    let button1 = Button::new(
+        panel_x + 50.0,
         button_y,
-        200.0,
-        40.0,
+        220.0,
+        45.0,
+        "🏪 Shop",
+        PURPLE,
+    );
+    let button2 = Button::new(
+        panel_x + 330.0,
+        button_y,
+        220.0,
+        45.0,
         "Start Next Day",
         GREEN,
     );
-    button.draw(time);
+    button1.draw(time);
+    button2.draw(time);
 }
 
 fn window_conf() -> Conf {
@@ -1146,6 +1307,10 @@ fn window_conf() -> Conf {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    // Generate simple music using oscillators
+    // Note: This is a placeholder - macroquad's audio is limited without external files
+    // In a real game, you'd load .ogg or .wav files
+
     let mut daycare = Daycare::new();
     daycare.spawn_new_dogs();
 
@@ -1158,6 +1323,8 @@ async fn main() {
         Button::new(820.0, 370.0, 420.0, 55.0, "⏰ Pass Time (1h)", DARKGRAY),
     ];
 
+    let shop_button = Button::new(820.0, 440.0, 420.0, 55.0, "🏪 Open Shop", PURPLE);
+
     let mut particles: Vec<Particle> = Vec::new();
     let mut background_particles: Vec<Particle> = Vec::new();
     let mut particle_spawn_timer = 0.0;
@@ -1168,7 +1335,6 @@ async fn main() {
         let time = get_time() as f32;
         let dt = get_frame_time();
 
-        // Spawn background particles
         particle_spawn_timer += dt;
         if particle_spawn_timer > 0.5 {
             particle_spawn_timer = 0.0;
@@ -1186,33 +1352,39 @@ async fn main() {
             }
         }
 
-        // Update background particles
         background_particles.retain_mut(|p| {
             p.update(dt);
             p.is_alive()
         });
 
-        // Update particles
         particles.retain_mut(|p| {
             p.update(dt);
             p.is_alive()
         });
 
-        if daycare.state == GameState::DayReport {
+        if daycare.state == GameState::Shop {
+            draw_shop(&mut daycare, time);
+        } else if daycare.state == GameState::DayReport {
             draw_day_report(&daycare, time);
 
             let panel_width = 600.0;
-            let panel_height = 500.0;
+            let panel_height = 550.0;
             let panel_x = (SCREEN_WIDTH - panel_width) / 2.0;
             let panel_y = (SCREEN_HEIGHT - panel_height) / 2.0 + (time * 2.0).sin() * 5.0;
-            let button_y = panel_y + panel_height - 45.0;
+            let button_y = panel_y + panel_height - 60.0;
 
             if is_mouse_button_pressed(MouseButton::Left) {
                 let (mouse_x, mouse_y) = mouse_position();
-                if mouse_x >= panel_x + 200.0
-                    && mouse_x <= panel_x + 400.0
+                if mouse_x >= panel_x + 50.0
+                    && mouse_x <= panel_x + 270.0
                     && mouse_y >= button_y
-                    && mouse_y <= button_y + 40.0
+                    && mouse_y <= button_y + 45.0
+                {
+                    daycare.state = GameState::Shop;
+                } else if mouse_x >= panel_x + 330.0
+                    && mouse_x <= panel_x + 550.0
+                    && mouse_y >= button_y
+                    && mouse_y <= button_y + 45.0
                 {
                     daycare.start_new_day();
                 }
@@ -1221,7 +1393,6 @@ async fn main() {
             draw_background(time);
             draw_floating_particles(&background_particles);
 
-            // Draw title with animation and shadow
             let title_scale = 1.0 + (time * 2.0).sin() * 0.02;
             draw_text_with_outline(
                 "🐕 Dog Daycare Simulator 🐕",
@@ -1232,12 +1403,11 @@ async fn main() {
                 DARKBROWN,
             );
 
-            // Draw day, time, and score with bubble background
             let info_text = format!(
-                "Day: {} | Time: {}:00 | Score: {}",
-                daycare.day, daycare.time, daycare.score
+                "Day: {} | Time: {}:00 | 💰 ${} | Score: {}",
+                daycare.day, daycare.time, daycare.money, daycare.score
             );
-            let info_dims = measure_text(&info_text, None, 24, 1.0);
+            let info_dims = measure_text(&info_text, None, 22, 1.0);
             draw_rounded_rect(
                 15.0,
                 55.0,
@@ -1246,9 +1416,8 @@ async fn main() {
                 17.0,
                 Color::from_rgba(101, 67, 33, 220),
             );
-            draw_text_with_outline(&info_text, 25.0, 80.0, 24.0, WHITE, BLACK);
+            draw_text_with_outline(&info_text, 25.0, 78.0, 22.0, WHITE, BLACK);
 
-            // Draw message with bubble
             if daycare.message_timer > 0.0 {
                 daycare.message_timer -= dt;
                 let msg_dims = measure_text(&daycare.message, None, 28, 1.0);
@@ -1286,18 +1455,15 @@ async fn main() {
                 );
             }
 
-            // Update and draw dogs
             for (i, dog) in daycare.dogs.iter_mut().enumerate() {
                 dog.update(dt);
                 dog.draw(time);
 
-                // Highlight selected dog
                 if Some(i) == daycare.selected_dog {
                     let pulse = (time * 4.0).sin() * 3.0 + 45.0;
                     draw_circle_lines(dog.x, dog.y + 20.0, pulse, 4.0, YELLOW);
                 }
 
-                // Draw alert icons for needs with pulse
                 let needs = dog.needs_attention();
                 if !needs.is_empty() {
                     let pulse = (time * 6.0).sin() * 2.0 + 14.0;
@@ -1307,7 +1473,6 @@ async fn main() {
                 }
             }
 
-            // Check for dog selection
             if is_mouse_button_pressed(MouseButton::Left) {
                 let (mouse_x, mouse_y) = mouse_position();
                 if mouse_x < 800.0 {
@@ -1323,7 +1488,6 @@ async fn main() {
                 }
             }
 
-            // Draw right panel with bubbly design
             draw_rectangle(
                 800.0,
                 0.0,
@@ -1332,7 +1496,6 @@ async fn main() {
                 Color::from_rgba(101, 67, 33, 255),
             );
 
-            // Decorative bubbles on panel
             for i in 0..8 {
                 let bubble_y = i as f32 * 100.0 + (time + i as f32).sin() * 10.0;
                 let bubble_x = 790.0 + (time * 0.5 + i as f32 * 0.8).cos() * 8.0;
@@ -1349,10 +1512,8 @@ async fn main() {
                 Color::from_rgba(border_glow, border_glow / 2, 0, 255),
             );
 
-            // Draw selected dog info
             if let Some(idx) = daycare.selected_dog {
                 if let Some(dog) = daycare.dogs.get(idx) {
-                    // Info bubble
                     draw_rounded_rect(815.0, 15.0, 450.0, 125.0, 20.0, Color::from_rgba(139, 90, 43, 255));
                     draw_rounded_rect_lines(815.0, 15.0, 450.0, 125.0, 20.0, 3.0, GOLD);
 
@@ -1375,10 +1536,9 @@ async fn main() {
                         BLACK,
                     );
 
-                    // Draw animated stats
-                    draw_animated_stat_bar(
+                    draw_bone_bar(
                         830.0,
-                        460.0,
+                        510.0,
                         400.0,
                         dog.display_energy,
                         100.0,
@@ -1386,9 +1546,9 @@ async fn main() {
                         "⚡ Energy",
                         time,
                     );
-                    draw_animated_stat_bar(
+                    draw_bone_bar(
                         830.0,
-                        505.0,
+                        555.0,
                         400.0,
                         dog.display_happiness,
                         100.0,
@@ -1396,9 +1556,9 @@ async fn main() {
                         "😊 Happiness",
                         time,
                     );
-                    draw_animated_stat_bar(
+                    draw_bone_bar(
                         830.0,
-                        550.0,
+                        600.0,
                         400.0,
                         100.0 - dog.display_hunger,
                         100.0,
@@ -1406,9 +1566,9 @@ async fn main() {
                         "🍖 Fullness",
                         time,
                     );
-                    draw_animated_stat_bar(
+                    draw_bone_bar(
                         830.0,
-                        595.0,
+                        645.0,
                         400.0,
                         dog.display_cleanliness,
                         100.0,
@@ -1417,24 +1577,15 @@ async fn main() {
                         time,
                     );
 
-                    draw_text_with_outline(
-                        &format!("Mood: {}", dog.get_mood()),
-                        830.0,
-                        655.0,
-                        22.0,
-                        WHITE,
-                        BLACK,
-                    );
-
                     let needs = dog.needs_attention();
                     if !needs.is_empty() {
-                        draw_text_with_outline("⚠️ Needs:", 830.0, 685.0, 20.0, RED, BLACK);
+                        draw_text_with_outline("⚠️ Needs:", 830.0, 690.0, 18.0, RED, BLACK);
                         for (i, need) in needs.iter().enumerate() {
                             draw_text_with_outline(
                                 need,
-                                830.0,
-                                710.0 + i as f32 * 25.0,
-                                18.0,
+                                870.0,
+                                690.0 + i as f32 * 20.0,
+                                16.0,
                                 ORANGE,
                                 BLACK,
                             );
@@ -1454,7 +1605,6 @@ async fn main() {
                 );
             }
 
-            // Draw action buttons
             for (i, button) in action_buttons.iter().enumerate() {
                 button.draw(time);
 
@@ -1527,6 +1677,11 @@ async fn main() {
                         daycare.show_message("Select a dog first!");
                     }
                 }
+            }
+
+            shop_button.draw(time);
+            if shop_button.is_clicked() {
+                daycare.state = GameState::Shop;
             }
 
             draw_floating_particles(&particles);
